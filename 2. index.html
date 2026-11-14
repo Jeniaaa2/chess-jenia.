@@ -1,125 +1,114 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Шахматы от Jenia</title>
-<script src="https://cloudflare.com"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>MATRIX OS // TERMINAL ACCESS</title>
 <style>
-  body { background: #121212; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; padding: 15px; touch-action: manipulation; }
-  h2 { margin: 5px 0 15px; color: #00e676; font-size: 22px; text-align: center; }
-  #board { display: grid; grid-template-columns: repeat(8, 11.5vw); grid-template-rows: repeat(8, 11.5vw); max-width: 440px; max-height: 440px; border: 3px solid #444; box-shadow: 0 8px 25px rgba(0,0,0,0.6); }
-  .sq { display: flex; justify-content: center; align-items: center; font-size: 9vw; cursor: pointer; user-select: none; }
-  @media (min-width: 460px) { .sq { font-size: 42px; } }
-  .light { background: #eeeed2; color: #000; }
-  .dark { background: #769656; color: #000; }
-  .selected { background: #f6f669 !important; }
-  .controls { margin-top: 20px; display: flex; gap: 15px; }
-  button { padding: 12px 24px; font-size: 16px; border: none; border-radius: 8px; background: #00e676; color: #000; font-weight: bold; cursor: pointer; }
-  #status { margin-top: 15px; font-size: 16px; color: #ccc; font-weight: bold; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#000;color:#00ff41;font-family:monospace;height:100vh;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;user-select:none}
+canvas{position:fixed;inset:0;z-index:0;opacity:0.45}
+.top{position:relative;z-index:1;padding:10px 14px;background:rgba(0,15,0,0.85);border-bottom:1px solid #00ff41;display:flex;justify-content:space-between;font-size:13px;font-weight:bold}
+#term{position:relative;z-index:1;flex:1;padding:12px;overflow-y:auto;font-size:13px;line-height:1.4;text-shadow:0 0 5px #00ff41;word-break:break-all}
+.btns{position:relative;z-index:1;padding:10px;background:rgba(0,10,0,0.9);border-top:1px solid #00ff41;display:flex;gap:8px;justify-content:center}
+button{flex:1;padding:12px 6px;background:#00290b;color:#00ff41;border:1px solid #00ff41;font-family:monospace;font-size:12px;font-weight:bold;cursor:pointer}
+button:active{background:#00ff41;color:#000}
+button.red{border-color:#ff2a2a;color:#ff2a2a;background:#290000}
+button.red:active{background:#ff2a2a;color:#000}
+#popup{position:fixed;inset:0;z-index:99;background:rgba(0,0,0,0.88);display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px}
+.box{border:3px solid #00ff41;padding:25px 20px;background:#001405;box-shadow:0 0 35px #00ff41;max-width:340px;width:100%}
+.box.err{border-color:#ff2a2a;background:#1a0000;box-shadow:0 0 35px #ff2a2a;color:#ff2a2a}
+.box h1{font-size:24px;margin-bottom:10px;letter-spacing:2px}
+.box p{font-size:14px;margin-bottom:18px}
 </style>
 </head>
-<body>
-  <h2>Шахматы от Jenia</h2>
-  <div id="board"></div>
-  <div id="status">Ваш ход (Белые)</div>
-  <div class="controls">
-    <button onclick="resetGame()">Новая игра</button>
+<body onclick="typeChunk()">
+<canvas id="m"></canvas>
+<div class="top">
+  <span>[ NODE: JENIA-MAINFRAME ]</span>
+  <span id="pct">BYPASS: 0%</span>
+</div>
+<div id="term">ИНИЦИАЛИЗАЦИЯ ПРОТОКОЛА NEO...<br>НАЖИМАЙТЕ НА ЭКРАН ДЛЯ ВВОДА КОДА ВЗЛОМА...<br><br></div>
+<div class="btns" onclick="event.stopPropagation()">
+  <button onclick="autoHack()">АВТОВЗЛОМ</button>
+  <button onclick="showPop(true)">ДОСТУП [OK]</button>
+  <button class="red" onclick="showPop(false)">ТРЕВОГА</button>
+</div>
+<div id="popup" onclick="this.style.display='none'">
+  <div class="box" id="pbox">
+    <h1 id="ptitle">ACCESS GRANTED</h1>
+    <p id="pdesc">ПОДКЛЮЧЕНИЕ К ЦЕНТРАЛЬНОМУ СЕРВЕРУ ВЫПОЛНЕНО. УРОВЕНЬ ДОПУСКА: ADMIN (JENIA).</p>
+    <button onclick="document.getElementById('popup').style.display='none'">ЗАКРЫТЬ ОКНО</button>
   </div>
-
+</div>
 <script>
-const game = new Chess();
-const pieces = {'p':'♟','n':'♞','b':'♝','r':'♜','q':'♛','k':'♚','P':'♙','N':'♘','B':'♗','R':'♖','Q':'♕','K':'♔'};
-const weights = {p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000};
-let selected = null;
-
-function evaluate(b) {
-  let total = 0;
-  const board = b.board();
-  for (let r = 0; r < 8; r++) {
-    for (let c = 0; c < 8; c++) {
-      const p = board[r][c];
-      if (p) total += (p.color === 'w' ? 1 : -1) * weights[p.type];
-    }
+const cvs=document.getElementById('m'),ctx=cvs.getContext('2d');
+const ch='アイウエオカキクケコサシスセソタチツテト0123456789Z';
+let dr=[];
+function rm(){cvs.width=innerWidth;cvs.height=innerHeight;dr=Array(Math.floor(cvs.width/26)).fill(0).map(()=>Math.random()*-30)}
+onresize=rm;rm();
+setInterval(()=>{
+  ctx.fillStyle='rgba(0,0,0,0.14)';ctx.fillRect(0,0,cvs.width,cvs.height);
+  ctx.font='18px monospace';
+  for(let i=0;i<dr.length;i++){
+    ctx.fillStyle=Math.random()>0.9?'#fff':'#00ff41';
+    ctx.fillText(ch.charAt(Math.floor(Math.random()*ch.length)),i*26,dr[i]*26);
+    if(dr[i]*26>cvs.height&&Math.random()>0.96)dr[i]=0;else dr[i]++;
   }
-  return total;
-}
+},85);
 
-function getBestMove() {
-  const moves = game.moves();
-  if (moves.length === 0) return null;
-  let bestMove = moves[0];
-  let bestVal = 99999;
-  for (let m of moves) {
-    game.move(m);
-    let val = evaluate(game);
-    if (game.in_checkmate()) val = -99999;
-    game.undo();
-    if (val < bestVal || (val === bestVal && Math.random() > 0.5)) {
-      bestVal = val;
-      bestMove = m;
-    }
-  }
-  return bestMove;
-}
+const lines=[
+  "ssh root@198.51.100.42 -p 443 --force-ssl",
+  "Bypassing SHA-512 firewall encryption... [OK]",
+  "Injecting kernel payload 0x8F9A2C4E into memory...",
+  "Scanning open ports: 22, 80, 443, 8080, 31337...",
+  "Decrypted RSA-4096 key: 9A:4F:11:E8:0C:77:B2:D5",
+  "Downloading classified_archive_2026.tar.gz [48.2 GB]...",
+  "Routing connection via proxy: Minsk -> Tokyo -> Zurich...",
+  "WARNING: Trace program detected! Deploying stealth mask...",
+  "Overriding biometric lock... User: JENIA_ADMIN",
+  "Executing SQL dump: SELECT * FROM global_satellites;"
+];
+let progress=0,timer=null;
 
-function draw() {
-  const b = document.getElementById('board');
-  b.innerHTML = '';
-  const grid = game.board();
-  const files = ['a','b','c','d','e','f','g','h'];
-  for (let r = 0; r < 8; r++) {
-    for (let f = 0; f < 8; f++) {
-      const sq = files[f] + (8 - r);
-      const div = document.createElement('div');
-      div.className = 'sq ' + ((r + f) % 2 === 0 ? 'light' : 'dark');
-      if (selected === sq) div.classList.add('selected');
-      const p = grid[r][f];
-      div.textContent = p ? pieces[p.color === 'w' ? p.type.toUpperCase() : p.type] : '';
-      div.onclick = () => onClick(sq, p);
-      b.appendChild(div);
-    }
+function typeChunk(){
+  const t=document.getElementById('term');
+  const rnd=lines[Math.floor(Math.random()*lines.length)];
+  const hex=Math.random().toString(16).substring(2,10).toUpperCase();
+  t.innerHTML+=`> [${hex}] ${rnd}<br>`;
+  t.scrollTop=t.scrollHeight;
+  if(progress<100){
+    progress+=Math.floor(Math.random()*7)+2;
+    if(progress>=100){progress=100;showPop(true)}
+    document.getElementById('pct').textContent=`BYPASS: ${progress}%`;
   }
 }
 
-function onClick(sq, p) {
-  if (game.game_over()) return;
-  if (!selected) {
-    if (p && p.color === 'w') { selected = sq; draw(); }
-  } else {
-    if (selected === sq) { selected = null; draw(); return; }
-    const move = game.move({ from: selected, to: sq, promotion: 'q' });
-    selected = null;
-    if (move) {
-      draw();
-      if (game.game_over()) { updateStatus(); return; }
-      document.getElementById('status').textContent = 'Думаю...';
-      setTimeout(() => {
-        const ai = getBestMove();
-        if (ai) game.move(ai);
-        draw();
-        updateStatus();
-      }, 250);
-    } else {
-      draw();
-    }
+function autoHack(){
+  if(timer)clearInterval(timer);
+  progress=0;
+  document.getElementById('term').innerHTML="ЗАПУСК АВТОМАТИЧЕСКОГО ПОДБОРА КЛЮЧЕЙ...<br>";
+  timer=setInterval(()=>{
+    typeChunk();
+    if(progress>=100){clearInterval(timer);timer=null}
+  },160);
+}
+
+function showPop(ok){
+  if(timer){clearInterval(timer);timer=null}
+  const pop=document.getElementById('popup'),box=document.getElementById('pbox');
+  const title=document.getElementById('ptitle'),desc=document.getElementById('pdesc');
+  if(ok){
+    box.className='box';
+    title.textContent='ACCESS GRANTED';
+    desc.textContent='ВЗЛОМ ЗАВЕРШЁН НА 100%. ВСЕ СИСТЕМЫ ПОД КОНТРОЛЕМ JENIA.';
+  }else{
+    box.className='box err';
+    title.textContent='SYSTEM ALERT!';
+    desc.textContent='ОБНАРУЖЕНО ВТОРЖЕНИЕ! СРАБОТАЛА ЗАЩИТА ПЕРИМЕТРА. СРОЧНО СМЕНИТЕ IP!';
   }
+  pop.style.display='flex';
 }
-
-function updateStatus() {
-  if (game.in_checkmate()) document.getElementById('status').textContent = 'Мат! Игра окончена.';
-  else if (game.in_draw()) document.getElementById('status').textContent = 'Ничья!';
-  else document.getElementById('status').textContent = game.in_check() ? 'Шах! Ваш ход' : 'Ваш ход (Белые)';
-}
-
-function resetGame() {
-  game.reset();
-  selected = null;
-  document.getElementById('status').textContent = 'Ваш ход (Белые)';
-  draw();
-}
-
-resetGame();
 </script>
 </body>
 </html>
